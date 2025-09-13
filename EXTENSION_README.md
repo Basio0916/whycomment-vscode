@@ -1,4 +1,11 @@
-# Welcome to your VS Code Extension
+# WhyComment VSCode Extension - Development Guide
+
+This extension automatically detects code sections that need explanatory comments and suggests improvements.
+
+## Extension Details
+- **Name**: WhyComment
+- **ID**: whycomment  
+- **Command**: WhyComment: Hello World
 
 ## What's in the folder
 
