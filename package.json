@@ -9,7 +9,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:whycomment.helloWorld"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
