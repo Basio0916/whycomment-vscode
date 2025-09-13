@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💡 アイデア相談
+    url: https://github.com/[username]/whycomment-vscode/discussions
+    about: Issueを作成する前にアイデアを相談する
+  - name: 📚 ドキュメント
+    url: https://github.com/[username]/whycomment-vscode#readme
+    about: プロジェクトの説明を読む
+  - name: ❓ Q&A
+    url: https://github.com/[username]/whycomment-vscode/discussions/categories/q-a
+    about: 質問や使い方について聞く
