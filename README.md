@@ -1,142 +1,59 @@
-# WhyComment - VSCode Extension PRD
+# WhyComment
 
-## 概要
+Detect "why?" moments in code changes and suggest comments.
 
-コード変更時に「なぜ？」と疑問に思う箇所を自動検出し、コメント追加を提案するVSCode拡張機能「WhyComment」
+## Features
 
-## 核心価値
+- Watches file saves (debounced) and computes Git diff vs HEAD.
+- Analyzes changed lines using heuristics and optionally an LLM.
+- Shows suggestions in a side panel with Apply/Ignore.
+- Inserts a line comment above the target line.
 
-開発者がコードレビュー時に感じる「この処理の意図がわからない」を事前に防ぐ
+## Commands
 
-## ターゲットユーザー
+- `WhyComment: Analyze Current File` — Run analysis for the active file.
+- `WhyComment: Toggle Auto Analyze` — Enable/disable auto analyze on save.
 
-- 個人開発者（チーム開発準備）
-- 小〜中規模チームの開発者
-- コードレビューの品質を上げたい人
-
-## 主要機能
-
-### 1. 自動検出機能
-
-**トリガー**: ファイル保存時
-**対象**: Git差分（前回コミットとの変更分）
-**検出内容**:
-
-- 条件分岐の理由が不明確
-- マジックナンバー
-- 処理順序の意図が不明
-- 非一般的なコードパターン
-
-### 2. 結果表示
-
-**場所**: VSCodeサイドパネル
-**表示内容**:
-
-- 行番号 + 疑問点
-- 推奨コメント案
-- 適用/無視ボタン
-
-### 3. コメント挿入
-
-**動作**: ユーザーが「適用」を選択
-**形式**: `// [推奨コメント]` を該当行の上に挿入
-
-## 技術仕様
-
-### アーキテクチャ
-
-```
-ファイル保存 → Git Diff取得 → LLM分析 → 結果表示 → コメント挿入
-```
-
-### LLM連携
-
-- **API**: OpenAI GPT-4o-mini (コスト重視)
-- **プロンプト**: 「なぜ？」箇所検出特化
-- **コンテキスト**: 変更行 + 前後10行
-
-### パフォーマンス
-
-- **キャッシュ**: 同一diff結果を保存
-- **デバウンス**: 保存から3秒後に実行
-- **制限**: 1日100回まで（無料版）
-
-## UX設計
-
-### 基本フロー
-
-1. 開発者がコード編集
-1. Ctrl+S で保存
-1. 3秒後に自動分析開始（Loading表示）
-1. サイドパネルに結果表示
-1. 気になる提案を選択して適用
-
-### エラー処理
-
-- API失敗 → 「一時的な問題です」通知
-- Git未初期化 → 「Git repository not found」
-- 大きすぎる差分 → 「変更が多すぎます（50行以上）」
-
-### 設定項目
+## Settings
 
 ```json
 {
   "whycomment.enabled": true,
   "whycomment.apiKey": "",
   "whycomment.apiProvider": "openai",
+  "whycomment.openaiModel": "gpt-4o-mini",
+  "whycomment.claudeModel": "claude-3-5-sonnet-latest",
   "whycomment.contextLines": 10,
-  "whycomment.excludePatterns": ["**/*.test.js", "**/*.spec.ts"],
+  "whycomment.excludePatterns": ["**/*.test.*", "**/*.spec.*"],
   "whycomment.autoAnalyze": true,
   "whycomment.dailyLimit": 100,
-  "whycomment.debounceMs": 3000
+  "whycomment.debounceMs": 3000,
+  "whycomment.maxChangedLines": 200
 }
 ```
 
-## 成功指標
+## How it works
 
-### MVP (v0.1)
+1. On save, the extension debounces and then runs `git diff` for the saved file.
+2. The diff is analyzed:
+   - Heuristics (local, offline): magic numbers, complex conditions, regexes, empty catch, bitwise ops, etc.
+   - LLM (optional): if `apiKey` is set, sends a compact prompt with diff context.
+3. Suggestions appear in the WhyComment view. Apply inserts a comment above the line.
 
-- [ ] ファイル保存で差分検出
-- [ ] LLM分析で1つ以上の提案
-- [ ] サイドパネル表示
-- [ ] コメント挿入機能
+## Requirements
 
-### v0.2
+- Git-initialized workspace, Node.js 18+, VS Code 1.80+
+- Optional: OpenAI or Claude API key for LLM.
 
-- [ ] キャッシュ機能
-- [ ] 設定画面
-- [ ] エラーハンドリング
-- [ ] 5人以上のユーザーテスト
+## Known limits
 
-### v1.0
+- Large diffs (200+ changed lines) are skipped for performance.
+- Language comment token detection is best-effort; common languages supported.
 
-- [ ] VS Code Marketplace公開
-- [ ] 100ダウンロード達成
-- [ ] ユーザーフィードバック収集
+## Development
 
-## 技術制約
-
-### 必須要件
-
-- TypeScript + VSCode Extension API
-- Node.js 18+
-- Git repository必須
-
-### 推奨環境
-
-- VSCode 1.80+
-- OpenAI API key
-- インターネット接続
-
-## リスク
-
-1. **APIコスト爆発** → 使用量制限で対応
-1. **分析精度低い** → プロンプト改善で対応
-1. **パフォーマンス問題** → キャッシュ・デバウンスで対応
-
-## 開発スケジュール
-
-- **Week 1-2**: 基本機能実装（#1-#5）
-- **Week 3**: UI実装（#6-#7）
-- **Week 4**: 最適化・テスト（#8-#9）
-- **Week 5**: ベータテスト・改善
+```bash
+npm install
+npm run watch
+# Press F5 in VS Code to launch Extension Host
+```
