@@ -21,6 +21,14 @@ export class GitDiffService {
         this.initializeGit();
     }
 
+    /**
+     * Normalize path separators to forward slashes for cross-platform compatibility
+     * Git always uses forward slashes internally, even on Windows
+     */
+    private normalizePath(filePath: string): string {
+        return filePath.replace(/\\/g, '/');
+    }
+
     private initializeGit(): void {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -69,8 +77,8 @@ export class GitDiffService {
         }
 
         try {
-            // Get relative path from workspace root
-            const relativePath = path.relative(this.workspaceRoot, filePath);
+            // Get relative path from workspace root and normalize to forward slashes
+            const relativePath = this.normalizePath(path.relative(this.workspaceRoot, filePath));
             
             // Get the diff for the specific file compared to HEAD
             const diffResult = await this.git.diff(['HEAD', '--', relativePath]);
@@ -162,11 +170,13 @@ export class GitDiffService {
             const changedFiles: string[] = [];
 
             // Include modified, added, and renamed files
-            changedFiles.push(...status.modified);
-            changedFiles.push(...status.created);
-            changedFiles.push(...status.renamed.map(file => file.to));
+            // Git status returns paths with forward slashes, so normalize them
+            changedFiles.push(...status.modified.map(file => this.normalizePath(file)));
+            changedFiles.push(...status.created.map(file => this.normalizePath(file)));
+            changedFiles.push(...status.renamed.map((file: any) => this.normalizePath(file.to)));
 
-            return changedFiles.map(file => path.join(this.workspaceRoot!, file));
+            // Return full paths with normalized separators
+            return changedFiles.map(file => this.normalizePath(path.join(this.workspaceRoot!, file)));
         } catch (error) {
             console.error('Error getting changed files:', error);
             throw error;
@@ -182,12 +192,18 @@ export class GitDiffService {
         }
 
         try {
-            const relativePath = path.relative(this.workspaceRoot, filePath);
+            // Get normalized relative path for comparison
+            const relativePath = this.normalizePath(path.relative(this.workspaceRoot, filePath));
             const status = await this.git.status();
             
-            return status.modified.includes(relativePath) || 
-                   status.created.includes(relativePath) ||
-                   status.renamed.some(file => file.to === relativePath);
+            // Normalize all git status paths for consistent comparison
+            const normalizedModified = status.modified.map(file => this.normalizePath(file));
+            const normalizedCreated = status.created.map(file => this.normalizePath(file));
+            const normalizedRenamed = status.renamed.map((file: any) => this.normalizePath(file.to));
+            
+            return normalizedModified.includes(relativePath) || 
+                   normalizedCreated.includes(relativePath) ||
+                   normalizedRenamed.includes(relativePath);
         } catch (error) {
             console.error('Error checking uncommitted changes:', error);
             return false;
