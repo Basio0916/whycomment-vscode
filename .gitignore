@@ -137,3 +137,9 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# WhyComment test files and builds
+manual-test.js
+test-diff-parsing.js
+test-file.js
+*.vsix

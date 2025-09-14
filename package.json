@@ -9,13 +9,19 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onFileSystem:file"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "whycomment.helloWorld",
         "title": "WhyComment: Hello World"
+      },
+      {
+        "command": "whycomment.analyzeChanges",
+        "title": "WhyComment: Analyze Changes"
       }
     ]
   },
@@ -28,14 +34,17 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.74.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/vscode": "^1.74.0",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
-    "eslint": "^9.34.0",
-    "typescript": "^5.9.2",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.34.0",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "simple-git": "^3.28.0"
   }
 }
