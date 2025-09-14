@@ -23,7 +23,36 @@
         "command": "whycomment.analyzeChanges",
         "title": "WhyComment: Analyze Changes"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "WhyComment",
+      "properties": {
+        "whycomment.contextLines": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Number of lines to extract before and after changed lines for context analysis"
+        },
+        "whycomment.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable WhyComment analysis"
+        },
+        "whycomment.autoAnalyze": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically analyze changes on file save"
+        },
+        "whycomment.debounceMs": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 1000,
+          "maximum": 10000,
+          "description": "Delay in milliseconds before starting analysis after file save"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

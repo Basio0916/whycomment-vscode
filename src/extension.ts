@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { GitDiffService } from './GitDiffService';
+import { ContextExtractionService, ContextData } from './ContextExtractionService';
 
 interface DebounceTimer {
 	[filePath: string]: NodeJS.Timeout;
@@ -13,12 +14,21 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log('WhyComment extension is now active!');
 
 	const gitDiffService = new GitDiffService();
+	const contextService = new ContextExtractionService();
 	const debounceTimers: DebounceTimer = {};
-	const debounceDelayMs = 3000; // 3 seconds as specified in PRD
+	
+	// Get debounce delay from configuration
+	const getDebounceDelay = () => vscode.workspace.getConfiguration('whycomment').get('debounceMs', 3000);
 
 	// Register file save event listener
-	const onDidSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document) => {
+	const onDidSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document: vscode.TextDocument) => {
 		const filePath = document.uri.fsPath;
+		
+		// Check if auto-analysis is enabled
+		const autoAnalyze = vscode.workspace.getConfiguration('whycomment').get('autoAnalyze', true);
+		if (!autoAnalyze) {
+			return;
+		}
 		
 		console.log(`File saved: ${filePath}`);
 		
@@ -30,14 +40,21 @@ export function activate(context: vscode.ExtensionContext) {
 		// Set new debounced timer
 		debounceTimers[filePath] = setTimeout(async () => {
 			try {
-				await analyzeFileChanges(filePath, gitDiffService);
+				await analyzeFileChanges(filePath, gitDiffService, contextService);
 			} catch (error) {
 				handleGitError(error);
 			} finally {
 				// Clean up timer
 				delete debounceTimers[filePath];
 			}
-		}, debounceDelayMs);
+		}, getDebounceDelay());
+	});
+
+	// Register configuration change listener
+	const onDidChangeConfigurationDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
+		if (event.affectsConfiguration('whycomment.contextLines')) {
+			contextService.updateContextLines();
+		}
 	});
 
 	// Register commands
@@ -53,18 +70,34 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		try {
-			await analyzeFileChanges(activeEditor.document.uri.fsPath, gitDiffService);
+			await analyzeFileChanges(activeEditor.document.uri.fsPath, gitDiffService, contextService);
 		} catch (error) {
 			handleGitError(error);
 		}
 	});
 
 	// Add disposables to context
-	context.subscriptions.push(onDidSaveDisposable, helloWorldDisposable, analyzeChangesDisposable);
+	context.subscriptions.push(
+		onDidSaveDisposable, 
+		onDidChangeConfigurationDisposable,
+		helloWorldDisposable, 
+		analyzeChangesDisposable
+	);
 }
 
-async function analyzeFileChanges(filePath: string, gitDiffService: GitDiffService): Promise<void> {
+async function analyzeFileChanges(
+	filePath: string, 
+	gitDiffService: GitDiffService, 
+	contextService: ContextExtractionService
+): Promise<void> {
 	console.log(`Starting analysis for: ${filePath}`);
+
+	// Check if WhyComment is enabled
+	const enabled = vscode.workspace.getConfiguration('whycomment').get('enabled', true);
+	if (!enabled) {
+		console.log('WhyComment is disabled in configuration');
+		return;
+	}
 
 	// Check if workspace has git repository
 	const isGitRepo = await gitDiffService.isGitRepository();
@@ -94,23 +127,50 @@ async function analyzeFileChanges(filePath: string, gitDiffService: GitDiffServi
 		return;
 	}
 
+	// Extract context around changed lines
+	let contextData: ContextData[];
+	try {
+		contextData = await contextService.extractContext(filePath, fileDiff.changes);
+	} catch (error) {
+		console.error('Error extracting context:', error);
+		vscode.window.showErrorMessage(`Failed to extract context: ${error instanceof Error ? error.message : String(error)}`);
+		return;
+	}
+
 	// Display results (for now, just log and show info message)
-	console.log('Git diff analysis completed:', {
+	console.log('Context extraction completed:', {
 		file: fileDiff.filePath,
 		changesCount: fileDiff.changes.length,
+		contextDataCount: contextData.length,
 		addedLines: fileDiff.changes.filter(c => c.type === 'added').length,
 		modifiedLines: fileDiff.changes.filter(c => c.type === 'modified').length,
 		deletedLines: fileDiff.changes.filter(c => c.type === 'deleted').length,
 	});
 
+	// Log detailed context information
+	for (const context of contextData) {
+		console.log(`Line ${context.lineNumber} (${context.changeType}):`, {
+			content: context.content.trim(),
+			functionName: context.functionName,
+			className: context.className,
+			isComment: context.isComment,
+			contextBeforeLines: context.contextBefore.length,
+			contextAfterLines: context.contextAfter.length
+		});
+	}
+
 	// Show analysis results to user
-	const addedCount = fileDiff.changes.filter(c => c.type === 'added').length;
-	const modifiedCount = fileDiff.changes.filter(c => c.type === 'modified').length;
+	const addedCount = contextData.filter(c => c.changeType === 'added').length;
+	const modifiedCount = contextData.filter(c => c.changeType === 'modified').length;
+	const contextLines = vscode.workspace.getConfiguration('whycomment').get('contextLines', 10);
 	
 	if (addedCount > 0 || modifiedCount > 0) {
+		const functionsDetected = contextData.filter(c => c.functionName).length;
+		const commentsDetected = contextData.filter(c => c.isComment).length;
+		
 		vscode.window.showInformationMessage(
-			`WhyComment detected ${addedCount + modifiedCount} changed lines in ${fileDiff.filePath}. ` +
-			`Added: ${addedCount}, Modified: ${modifiedCount}`
+			`WhyComment analyzed ${addedCount + modifiedCount} changes with ${contextLines}-line context. ` +
+			`Functions detected: ${functionsDetected}, Comment lines: ${commentsDetected}`
 		);
 	}
 }
