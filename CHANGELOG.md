@@ -1,8 +1,9 @@
 # Change Log
 
-All notable changes to this project will be documented in this file.
+All notable changes to the "whycomment" extension will be documented in this file.
 
-## 0.1.0
+Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-- Initial MVP: Git diff, heuristics analyzer, side panel, apply/ignore, settings, debounce, limits, and LLM provider stub.
+## [Unreleased]
 
+- Initial release

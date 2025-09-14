@@ -1,179 +1,50 @@
 {
   "name": "whycomment",
   "displayName": "WhyComment",
-  "description": "Detect 'why?' moments in code changes and suggest comments.",
-  "version": "0.1.0",
-  "publisher": "your-name",
+  "description": "Automatically detect code sections that need explanatory comments and suggest improvements",
+  "version": "0.0.1",
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onCommand:whycomment.analyzeCurrentFile",
-    "onCommand:whycomment.clearAll",
-    "onView:whycommentView"
+    "onFileSystem:file"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "whycomment.analyzeCurrentFile",
-        "title": "WhyComment: Analyze Current File"
+        "command": "whycomment.helloWorld",
+        "title": "WhyComment: Hello World"
       },
       {
-        "command": "whycomment.applySuggestion",
-        "title": "WhyComment: Apply Suggestion"
-      },
-      {
-        "command": "whycomment.ignoreSuggestion",
-        "title": "WhyComment: Ignore Suggestion"
-      },
-      {
-        "command": "whycomment.toggleAutoAnalyze",
-        "title": "WhyComment: Toggle Auto Analyze"
-      },
-      {
-        "command": "whycomment.chooseLanguage",
-        "title": "WhyComment: Choose Output Language"
-      },
-      {
-        "command": "whycomment.clearAll",
-        "title": "WhyComment: Clear All Suggestions"
-      },
-      {
-        "command": "whycomment.chooseOpenAIModel",
-        "title": "WhyComment: Choose OpenAI Model"
+        "command": "whycomment.analyzeChanges",
+        "title": "WhyComment: Analyze Changes"
       }
-    ],
-    "views": {
-      "explorer": [
-        {
-          "id": "whycommentView",
-          "name": "WhyComment"
-        }
-      ]
-    },
-    "menus": {
-      "view/title": [
-        {
-          "command": "whycomment.clearAll",
-          "when": "view == whycommentView",
-          "group": "navigation@99"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "whycomment.applySuggestion",
-          "when": "view == whycommentView && viewItem == suggestion",
-          "group": "navigation@1"
-        },
-        {
-          "command": "whycomment.ignoreSuggestion",
-          "when": "view == whycommentView && viewItem == suggestion",
-          "group": "navigation@2"
-        }
-      ]
-    },
-    "configuration": {
-      "title": "WhyComment",
-      "properties": {
-        "whycomment.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable WhyComment."
-        },
-        "whycomment.apiKey": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "API key for LLM provider (e.g. OpenAI)."
-        },
-        "whycomment.apiProvider": {
-          "type": "string",
-          "enum": [
-            "openai",
-            "claude"
-          ],
-          "default": "openai",
-          "description": "LLM provider (openai or claude)."
-        },
-        "whycomment.openaiModel": {
-          "type": "string",
-          "default": "gpt-4o-mini",
-          "description": "OpenAI model used for suggestions (e.g. gpt-4o-mini)."
-        },
-        "whycomment.claudeModel": {
-          "type": "string",
-          "default": "claude-3-5-sonnet-latest",
-          "description": "Claude model used for suggestions (e.g. claude-3-5-sonnet-latest)."
-        },
-        "whycomment.contextLines": {
-          "type": "number",
-          "default": 1,
-          "description": "Number of context lines around changes in diff."
-        },
-        "whycomment.excludePatterns": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [
-            "**/*.test.*",
-            "**/*.spec.*"
-          ],
-          "description": "Glob patterns to exclude from analysis."
-        },
-        "whycomment.autoAnalyze": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically analyze on save."
-        },
-        "whycomment.dailyLimit": {
-          "type": "number",
-          "default": 100,
-          "description": "Daily analysis limit (LLM calls)."
-        },
-        "whycomment.debounceMs": {
-          "type": "number",
-          "default": 3000,
-          "description": "Debounce in milliseconds after save before analysis."
-        },
-        "whycomment.maxChangedLines": {
-          "type": "number",
-          "default": 200,
-          "description": "Max changed lines in a diff to analyze."
-        },
-        "whycomment.outputLanguage": {
-          "type": "string",
-          "enum": [
-            "auto",
-            "en",
-            "ja"
-          ],
-          "default": "auto",
-          "description": "Language of suggested comments (auto, en, ja)."
-        },
-        "whycomment.preferLLM": {
-          "type": "boolean",
-          "default": true,
-          "description": "When LLM suggestions exist, prefer them over heuristics."
-        }
-      }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
-    "@types/vscode": "^1.80.0",
-    "typescript": "^5.0.0"
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.74.0",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.34.0",
+    "typescript": "^5.9.2"
   },
   "dependencies": {
-    "diff": "^8.0.2"
+    "simple-git": "^3.28.0"
   }
 }
