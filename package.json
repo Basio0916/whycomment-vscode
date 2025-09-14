@@ -16,8 +16,29 @@
       {
         "command": "whycomment.helloWorld",
         "title": "WhyComment: Hello World"
+      },
+      {
+        "command": "whycomment.extractContext",
+        "title": "WhyComment: Extract Context"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "WhyComment",
+      "properties": {
+        "whycomment.contextLines": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Number of lines to extract before and after changes"
+        },
+        "whycomment.excludeComments": {
+          "type": "boolean",
+          "default": false,
+          "description": "Exclude comment lines from context extraction"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
