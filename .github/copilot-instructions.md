@@ -160,4 +160,4 @@ Repository contains:
 - Quality: Comprehensive error handling and user experience validation
 
 ### コメントについて
-- コメントは日本語で記載してください
+- Agentモードやレビュー時のコメントは日本語で記載してください
