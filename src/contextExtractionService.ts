@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { ContextData, ChangeInfo, FileContext, LanguageParser, ContextExtractionConfig, FunctionInfo } from './types';
-import { TypeScriptParser, PythonParser, JavaParser } from './parsers';
+import { TypeScriptParser, PythonParser, JavaParser, GoParser } from './parsers';
 
 /**
  * Service for extracting context around code changes for LLM analysis
@@ -19,7 +19,8 @@ export class ContextExtractionService {
 		const parsers = [
 			new TypeScriptParser(),
 			new PythonParser(),
-			new JavaParser()
+			new JavaParser(),
+			new GoParser()
 		];
 
 		for (const parser of parsers) {
@@ -33,7 +34,7 @@ export class ContextExtractionService {
 		const config = vscode.workspace.getConfiguration('whycomment');
 		return {
 			contextLines: config.get<number>('contextLines', 10),
-			supportedLanguages: ['typescript', 'javascript', 'python', 'java'],
+			supportedLanguages: ['typescript', 'javascript', 'python', 'java', 'go'],
 			excludeComments: config.get<boolean>('excludeComments', false)
 		};
 	}

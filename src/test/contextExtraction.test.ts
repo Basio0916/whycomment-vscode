@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { ContextExtractionService } from '../contextExtractionService';
 import { ChangeInfo } from '../types';
-import { TypeScriptParser, PythonParser, JavaParser } from '../parsers';
+import { TypeScriptParser, PythonParser, JavaParser, GoParser } from '../parsers';
 
 suite('Context Extraction Service Tests', () => {
 	let service: ContextExtractionService;
@@ -110,10 +110,53 @@ suite('Context Extraction Service Tests', () => {
 			assert.strictEqual(classInfo?.name, 'Calculator');
 		});
 
+		test('Go Parser - Function and Struct Detection', () => {
+			const parser = new GoParser();
+			const lines = [
+				'package main',
+				'',
+				'import "fmt"',
+				'',
+				'type Calculator struct {',
+				'    value int',
+				'}',
+				'',
+				'func (c *Calculator) Add(a, b int) int {',
+				'    result := a + b',
+				'    return result',
+				'}',
+				'',
+				'func main() {',
+				'    calc := Calculator{value: 0}',
+				'    fmt.Println(calc.Add(2, 3))',
+				'}',
+				'',
+				'type Adder interface {',
+				'    Add(a, b int) int',
+				'}'
+			];
+
+			const functions = parser.parseFunctions(lines);
+			assert.strictEqual(functions.length, 4); // struct + method + function + interface
+			
+			const structInfo = functions.find(f => f.name === 'Calculator' && f.type === 'class');
+			assert.ok(structInfo, 'Should find Calculator struct');
+			
+			const methodInfo = functions.find(f => f.name === 'Add' && f.type === 'method');
+			assert.ok(methodInfo, 'Should find Add method');
+			
+			const functionInfo = functions.find(f => f.name === 'main' && f.type === 'function');
+			assert.ok(functionInfo, 'Should find main function');
+			
+			const interfaceInfo = functions.find(f => f.name === 'Adder' && f.type === 'interface');
+			assert.ok(interfaceInfo, 'Should find Adder interface');
+		});
+
 		test('Comment Detection', () => {
 			const tsParser = new TypeScriptParser();
 			const pyParser = new PythonParser();
 			const javaParser = new JavaParser();
+			const goParser = new GoParser();
 
 			// TypeScript/JavaScript comments
 			assert.strictEqual(tsParser.isCommentLine('// This is a comment'), true);
@@ -132,6 +175,12 @@ suite('Context Extraction Service Tests', () => {
 			assert.strictEqual(javaParser.isCommentLine('/* Block comment */'), true);
 			assert.strictEqual(javaParser.isCommentLine(' * Javadoc'), true);
 			assert.strictEqual(javaParser.isCommentLine('int x = 5;'), false);
+
+			// Go comments
+			assert.strictEqual(goParser.isCommentLine('// Go comment'), true);
+			assert.strictEqual(goParser.isCommentLine('/* Block comment */'), true);
+			assert.strictEqual(goParser.isCommentLine(' * Multi-line comment'), true);
+			assert.strictEqual(goParser.isCommentLine('var x int = 5'), false);
 		});
 	});
 
@@ -143,6 +192,7 @@ suite('Context Extraction Service Tests', () => {
 			assert.ok(config.supportedLanguages.includes('typescript'));
 			assert.ok(config.supportedLanguages.includes('python'));
 			assert.ok(config.supportedLanguages.includes('java'));
+			assert.ok(config.supportedLanguages.includes('go'));
 		});
 
 		test('File Support Detection', () => {
