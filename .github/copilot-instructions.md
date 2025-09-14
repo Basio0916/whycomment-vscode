@@ -158,3 +158,6 @@ Repository contains:
 - MVP: File save detection → LLM analysis → sidebar display → comment insertion
 - Target: VS Code Marketplace publication with 100+ downloads
 - Quality: Comprehensive error handling and user experience validation
+
+### コメントについて
+- コメントは日本語で記載してください
