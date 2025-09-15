@@ -28,7 +28,7 @@
   "whycomment.contextLines": 10,
   "whycomment.excludePatterns": ["**/*.test.*", "**/*.spec.*"],
   "whycomment.autoAnalyze": true,
-  "whycomment.debounceMs": 3000
+  "whycomment.debounceMs": 1000
 }
 ```
 

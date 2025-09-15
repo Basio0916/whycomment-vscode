@@ -115,8 +115,12 @@ async function analyzeSelection() {
       showInfo('No suggestions for selection');
       return;
     }
+    // Drop LLM results that target a line already shown in UI
     const existing = store.getForFile(doc.uri);
-    const merged = appendAndDedupe(existing, filtered);
+    const existingActive = existing.filter(x => !x.applied && !x.ignored);
+    const existingLines = new Set(existingActive.map(x => x.line));
+    const filteredIncoming = filtered.filter(s => !existingLines.has(s.line));
+    const merged = appendAndDedupe(existing, filteredIncoming);
     store.setForFile(doc.uri, merged);
     tree.refresh();
     // Optionally reveal first suggestion

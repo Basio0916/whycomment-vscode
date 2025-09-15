@@ -26,7 +26,7 @@ Detect "why?" moments in code changes and suggest comments.
   "whycomment.contextLines": 10,
   "whycomment.excludePatterns": ["**/*.test.*", "**/*.spec.*"],
   "whycomment.autoAnalyze": true,
-  "whycomment.debounceMs": 3000,
+  "whycomment.debounceMs": 1000,
   "whycomment.outputLanguage": "auto"
 }
 ```

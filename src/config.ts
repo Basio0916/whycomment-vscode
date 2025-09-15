@@ -20,7 +20,7 @@ export function getConfig(): WhyConfig {
     contextLines: c.get('contextLines', 1),
     excludePatterns: c.get('excludePatterns', ["**/*.test.*", "**/*.spec.*"]),
     autoAnalyze: c.get('autoAnalyze', true),
-    debounceMs: c.get('debounceMs', 3000),
+    debounceMs: c.get('debounceMs', 1000),
     outputLanguage: c.get('outputLanguage', 'auto'),
     openaiModel: c.get('openaiModel', 'gpt-4o-mini'),
     claudeModel: c.get('claudeModel', 'claude-3-5-haiku-latest')
