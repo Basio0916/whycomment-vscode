@@ -224,7 +224,9 @@ function appendAndDedupe(existing: Suggestion[], incoming: Suggestion[]): Sugges
   const map = new Map<string, Suggestion>();
   for (const s of existing) map.set(s.id, s);
   for (const s of incoming) map.set(s.id, s);
-  return Array.from(map.values());
+  const out = Array.from(map.values());
+  out.sort((a, b) => a.line - b.line);
+  return out;
 }
 
 async function applySuggestion(item?: any) {
