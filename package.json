@@ -66,7 +66,7 @@
           {
             "command": "whycomment.clearAll",
             "when": "view == whycommentView",
-            "group": "navigation@99"
+            "group": "myGroup@99"
           }
         ],
         "commandPalette": [
@@ -83,30 +83,40 @@
             "when": "true"
           }
         ],
-        "editor/context": [
-          {
-            "command": "whycomment.analyzeSelection",
-            "when": "editorHasSelection",
-            "group": "navigation@1"
-          }
-        ],
-        "view/item/context": [
-          {
-            "command": "whycomment.applySuggestion",
-            "when": "view == whycommentView && viewItem == suggestion",
-            "group": "navigation@1"
-          },
-          {
-            "command": "whycomment.ignoreSuggestion",
-            "when": "view == whycommentView && viewItem == suggestion",
-            "group": "navigation@2"
-          },
-          {
-            "command": "whycomment.suggestComments",
-            "when": "view == whycommentView && viewItem == suggestion",
-            "group": "navigation@3"
-          }
-        ]
+      "editor/context": [
+        {
+          "command": "-",
+          "when": "editorHasSelection",
+          "group": "myGroup@49"
+        },
+        {
+          "command": "whycomment.analyzeSelection",
+          "when": "editorHasSelection",
+          "group": "myGroup@50"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "-",
+          "when": "view == whycommentView && viewItem == suggestion",
+          "group": "myGroup@49"
+        },
+        {
+          "command": "whycomment.applySuggestion",
+          "when": "view == whycommentView && viewItem == suggestion",
+          "group": "myGroup@50"
+        },
+        {
+          "command": "whycomment.ignoreSuggestion",
+          "when": "view == whycommentView && viewItem == suggestion",
+          "group": "myGroup@51"
+        },
+        {
+          "command": "whycomment.suggestComments",
+          "when": "view == whycommentView && viewItem == suggestion",
+          "group": "myGroup@52"
+        }
+      ]
       },
     "configuration": {
       "title": "WhyComment",
