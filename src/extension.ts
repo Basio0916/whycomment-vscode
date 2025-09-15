@@ -11,7 +11,6 @@ import { SuggestionTreeProvider } from './tree';
 let store: SuggestionStore;
 let tree: SuggestionTreeProvider;
 let treeView: vscode.TreeView<any>;
-let globalMemento: vscode.Memento;
 const debounceTimers = new Map<string, NodeJS.Timeout>();
 const cache = new Map<string, Suggestion[]>(); // diff-hash -> suggestions
 // Keep last analyzed file text to send incremental diffs only
@@ -21,7 +20,6 @@ export function activate(context: vscode.ExtensionContext) {
   store = new SuggestionStore();
   tree = new SuggestionTreeProvider(() => collectAllSuggestions());
   treeView = vscode.window.createTreeView('whycommentView', { treeDataProvider: tree });
-  globalMemento = context.globalState;
 
   context.subscriptions.push(
     treeView,
@@ -46,7 +44,7 @@ function collectAllSuggestions(): Suggestion[] {
 
 function scheduleAnalyze(uri: vscode.Uri) {
   const cfg = getConfig();
-  if (!cfg.enabled || !cfg.autoAnalyze) return;
+  if (!cfg.autoAnalyze) return;
   const key = uri.toString();
   clearTimeout(debounceTimers.get(key) as NodeJS.Timeout);
   const timer = setTimeout(() => {
@@ -67,7 +65,6 @@ async function analyzeSelection() {
     return;
   }
   const cfg = getConfig();
-  if (!cfg.enabled) return;
   const startLine = selection.start.line;
   const endLine = selection.end.line;
   const endChar = selection.end.character;
@@ -86,7 +83,7 @@ async function analyzeSelection() {
     const llmKey = cfg.apiKey?.trim();
     let suggestions: Suggestion[] = [];
     if (llmKey) {
-      const quotaOk = await withinDailyLimit(cfg.dailyLimit);
+      const quotaOk = await withinDailyLimit(0);
       if (!quotaOk) {
         void vscode.window.showInformationMessage('WhyComment: 1日の上限に達しました。');
         return;
@@ -123,7 +120,6 @@ async function analyzeSelection() {
 async function analyzeUri(uri: vscode.Uri, opts?: { manual?: boolean }) {
   try {
     const cfg = getConfig();
-    if (!cfg.enabled) return;
     const relPath = vscode.workspace.asRelativePath(uri);
     if (anyGlobMatch(cfg.excludePatterns, relPath)) {
       showInfo(`Excluded: ${relPath}`);
@@ -152,12 +148,7 @@ async function analyzeUri(uri: vscode.Uri, opts?: { manual?: boolean }) {
       return;
     }
 
-    // rough changed lines count
-    const changedLines = diff.split(/\r?\n/).filter(l => l.startsWith('+') || l.startsWith('-')).length;
-    if (changedLines > cfg.maxChangedLines) {
-      void vscode.window.showInformationMessage(`WhyComment: Too many changes (${changedLines}). Skipping.`);
-      return;
-    }
+    // optional: previously limited large diffs; no limit now
 
     const cacheKey = require('crypto').createHash('sha1').update(diff).digest('hex');
     let suggestions = cache.get(cacheKey);
@@ -166,7 +157,7 @@ async function analyzeUri(uri: vscode.Uri, opts?: { manual?: boolean }) {
       // LLM only: if configured and within daily limit
       const llmKey = cfg.apiKey?.trim();
       if (llmKey) {
-        const quotaOk = await withinDailyLimit(cfg.dailyLimit);
+        const quotaOk = await withinDailyLimit(0);
         if (quotaOk) {
           const model = cfg.apiProvider === 'openai' ? cfg.openaiModel : cfg.claudeModel;
           // Call LLM without skipLines; UI handles dedupe
@@ -174,7 +165,7 @@ async function analyzeUri(uri: vscode.Uri, opts?: { manual?: boolean }) {
           suggestions = llmItems;
           await incrementDailyCount();
         } else {
-          void vscode.window.showInformationMessage('WhyComment daily limit reached.');
+          
         }
       }
       // Resolve only new suggestions against current document using anchors when available
@@ -309,28 +300,9 @@ async function clearAllSuggestions() {
 
 // chooseOpenAIModel command removed per request
 
-async function withinDailyLimit(limit: number): Promise<boolean> {
-  const today = new Date().toISOString().slice(0, 10);
-  const date = globalMemento.get<string>('whycomment.daily.date', '');
-  let count = globalMemento.get<number>('whycomment.daily.count', 0);
-  if (date !== today) {
-    await globalMemento.update('whycomment.daily.date', today);
-    await globalMemento.update('whycomment.daily.count', 0);
-    count = 0;
-  }
-  return count < limit;
-}
-
-async function incrementDailyCount(): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
-  const date = globalMemento.get<string>('whycomment.daily.date', '');
-  let count = globalMemento.get<number>('whycomment.daily.count', 0);
-  if (date !== today) {
-    await globalMemento.update('whycomment.daily.date', today);
-    count = 0;
-  }
-  await globalMemento.update('whycomment.daily.count', count + 1);
-}
+// Daily limit feature removed; keep no-op stubs for compatibility
+async function withinDailyLimit(_limit: number): Promise<boolean> { return true; }
+async function incrementDailyCount(): Promise<void> { /* no-op */ }
 
 async function resolveSuggestionLocations(uri: vscode.Uri, items: Suggestion[]): Promise<Suggestion[]> {
   try {

@@ -138,7 +138,7 @@ async function callClaudeWithMessages(messages: ChatMessage[], apiKey: string, m
   const systemMsg = messages.find(m => m.role === 'system')?.content ?? 'You output only JSON, nothing else.';
   const msgList = messages.filter(m => m.role !== 'system');
   const body = {
-    model: model || 'claude-3-5-sonnet-latest',
+    model: model || 'claude-3-5-haiku-latest',
     max_tokens: 1500,
     temperature: 0.2,
     system: systemMsg,
@@ -205,4 +205,3 @@ function tryParseJSON(text: string): any | undefined {
     return undefined;
   }
 }
-

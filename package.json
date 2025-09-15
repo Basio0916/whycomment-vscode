@@ -93,11 +93,6 @@
     "configuration": {
       "title": "WhyComment",
       "properties": {
-        "whycomment.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable WhyComment."
-        },
         "whycomment.apiKey": {
           "type": "string",
           "default": "",
@@ -109,18 +104,18 @@
             "openai",
             "claude"
           ],
-          "default": "openai",
+          "default": "claude",
           "description": "LLM provider (openai or claude)."
+        },
+        "whycomment.claudeModel": {
+          "type": "string",
+          "default": "claude-3-5-haiku-latest",
+          "description": "Claude model used for suggestions (e.g. claude-3-5-haiku-latest)."
         },
         "whycomment.openaiModel": {
           "type": "string",
           "default": "gpt-4o-mini",
           "description": "OpenAI model used for suggestions (e.g. gpt-4o-mini)."
-        },
-        "whycomment.claudeModel": {
-          "type": "string",
-          "default": "claude-3-5-sonnet-latest",
-          "description": "Claude model used for suggestions (e.g. claude-3-5-sonnet-latest)."
         },
         "whycomment.contextLines": {
           "type": "number",
@@ -143,20 +138,10 @@
           "default": true,
           "description": "Automatically analyze on save."
         },
-        "whycomment.dailyLimit": {
-          "type": "number",
-          "default": 100,
-          "description": "Daily analysis limit (LLM calls)."
-        },
         "whycomment.debounceMs": {
           "type": "number",
           "default": 3000,
           "description": "Debounce in milliseconds after save before analysis."
-        },
-        "whycomment.maxChangedLines": {
-          "type": "number",
-          "default": 200,
-          "description": "Max changed lines in a diff to analyze."
         },
         "whycomment.outputLanguage": {
           "type": "string",
@@ -167,11 +152,6 @@
           ],
           "default": "auto",
           "description": "Language of suggested comments (auto, en, ja)."
-        },
-        "whycomment.preferLLM": {
-          "type": "boolean",
-          "default": true,
-          "description": "When LLM suggestions exist, prefer them over heuristics."
         }
       }
     }
