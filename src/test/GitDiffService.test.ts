@@ -8,7 +8,7 @@ suite('GitDiffService Test Suite', () => {
 	let gitDiffService: GitDiffService;
 	let testWorkspacePath: string;
 
-	setup(async () => {
+	suiteSetup(async () => {
 		gitDiffService = new GitDiffService();
 		
 		// Get workspace path for testing

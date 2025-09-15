@@ -37,14 +37,13 @@ export class GitDiffService {
         }
 
         this.workspaceRoot = workspaceFolders[0].uri.fsPath;
-        const options: Partial<SimpleGitOptions> = {
+        const options: SimpleGitOptions = {
             baseDir: this.workspaceRoot,
             binary: 'git',
             maxConcurrentProcesses: 1,
-            trimmed: false,
         };
 
-        this.git = simpleGit(options);
+        this.git = simpleGit(this.workspaceRoot, options);
     }
 
     /**
@@ -171,8 +170,8 @@ export class GitDiffService {
 
             // Include modified, added, and renamed files
             // Git status returns paths with forward slashes, so normalize them
-            changedFiles.push(...status.modified.map(file => this.normalizePath(file)));
-            changedFiles.push(...status.created.map(file => this.normalizePath(file)));
+            changedFiles.push(...status.modified.map((file: string) => this.normalizePath(file)));
+            changedFiles.push(...status.created.map((file: string) => this.normalizePath(file)));
             changedFiles.push(...status.renamed.map((file: any) => this.normalizePath(file.to)));
 
             // Return full paths with normalized separators
@@ -197,8 +196,8 @@ export class GitDiffService {
             const status = await this.git.status();
             
             // Normalize all git status paths for consistent comparison
-            const normalizedModified = status.modified.map(file => this.normalizePath(file));
-            const normalizedCreated = status.created.map(file => this.normalizePath(file));
+            const normalizedModified = status.modified.map((file: string) => this.normalizePath(file));
+            const normalizedCreated = status.created.map((file: string) => this.normalizePath(file));
             const normalizedRenamed = status.renamed.map((file: any) => this.normalizePath(file.to));
             
             return normalizedModified.includes(relativePath) || 
