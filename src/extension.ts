@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { getConfig, onConfigChange } from './config';
-import { anyGlobMatch, getLineCommentToken, revealPosition, showInfo } from './utils';
+import { anyGlobMatch, getLineCommentToken, revealPosition, showInfo, isUnderWorkspace } from './utils';
 import { getDiffForFile } from './git';
 // Static heuristics removed per project decision (LLM-only)
 import { analyzeWithLLM } from './llm';
@@ -54,6 +54,10 @@ function collectAllSuggestions(): Suggestion[] {
 function scheduleAnalyze(uri: vscode.Uri) {
   const cfg = getConfig();
   if (!cfg.autoAnalyze) return;
+  // Skip non-workspace files and VS Code config files (settings/tasks/launch)
+  if (!isUnderWorkspace(uri)) return;
+  const p = uri.fsPath.replace(/\\/g, '/').toLowerCase();
+  if (p.endsWith('.code-workspace') || p.includes('/.vscode/')) return;
   const key = uri.toString();
   clearTimeout(debounceTimers.get(key) as NodeJS.Timeout);
   const timer = setTimeout(() => {
