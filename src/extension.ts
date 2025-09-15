@@ -210,10 +210,14 @@ async function insertCommentAbove(s: Suggestion) {
   const token = getLineCommentToken(doc.languageId);
   const raw = s.suggestedComment.trim();
   const commentLine = raw.startsWith(token) ? raw : `${token} ${raw}`;
+  const targetLine = Math.min(Math.max(0, s.line), doc.lineCount - 1);
+  const targetText = doc.lineAt(targetLine).text;
+  const indent = (targetText.match(/^\s*/)?.[0]) ?? '';
+  const lineWithIndent = indent + commentLine + '\n';
   await editor.edit(edit => {
-    edit.insert(new vscode.Position(s.line, 0), commentLine + '\n');
+    edit.insert(new vscode.Position(targetLine, 0), lineWithIndent);
   });
-  revealPosition(s.uri, new vscode.Position(s.line, 0));
+  revealPosition(s.uri, new vscode.Position(targetLine, indent.length));
 }
 
 async function toggleAutoAnalyze() {
