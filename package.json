@@ -3,7 +3,7 @@
   "displayName": "WhyComment",
   "description": "Detect 'why?' moments in code changes and suggest comments.",
   "version": "0.1.0",
-  "publisher": "your-name",
+  "publisher": "basio",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -17,6 +17,11 @@
     "onView:whycommentView"
   ],
   "main": "./out/extension.js",
+  "icon": "assets/icon_128.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Basio0916/whycomment-vscode"
+  },
     "contributes": {
       "commands": [
         {
