@@ -61,8 +61,8 @@ export class SuggestionTreeProvider implements vscode.TreeDataProvider<Suggestio
           command: 'vscode.open',
           arguments: [s.uri, { selection: new vscode.Range(s.line, 0, s.line, 0) }]
         } as vscode.Command;
-        // Tooltip shows the full comment that will be inserted on Accept
-        leaf.tooltip = s.suggestedComment || s.message;
+        // Tooltip shows the message (why question)
+        leaf.tooltip = s.message;
         leaf.iconPath = new vscode.ThemeIcon(s.applied ? 'pass' : s.ignored ? 'circle-slash' : 'comment');
         leaves.push(leaf);
       }

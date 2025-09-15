@@ -7,7 +7,6 @@ export interface Suggestion {
   uri: vscode.Uri;
   line: number; // 0-based line index
   message: string;
-  suggestedComment: string;
   anchor?: string; // optional code snippet to locate the line
   range?: vscode.Range;
   source: SuggestionSource;

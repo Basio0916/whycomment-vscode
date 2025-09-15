@@ -64,6 +64,44 @@ export async function analyzeWithLLM(uri: vscode.Uri, diff: string, opts: LLMReq
   }
 }
 
+export async function suggestCommentVariantsForLine(codeSnippet: string, opts: LLMRequestOptions & { languagePref?: 'auto' | 'en' | 'ja' }): Promise<string[]> {
+  if (!opts.apiKey) return [];
+  const effectiveLang: 'en' | 'ja' = opts.language === 'auto'
+    ? ((vscode.env.language || '').toLowerCase().startsWith('ja') ? 'ja' : 'en')
+    : opts.language;
+  const system = [
+    'Role: Senior engineer writing helpful explanatory code comments.',
+    'Write concise, single-line explanations that clarify the rationale, assumptions, or constraints behind the code line(s).',
+    'Do not include comment tokens, markdown, or code fences. Keep each under ~80 characters. Language must match the requested locale.',
+    effectiveLang === 'ja' ? 'Language: Japanese.' : 'Language: English.'
+  ].join('\n');
+  const user = [
+    'Given the following code context, propose three alternative comment texts to insert immediately above the highlighted line.',
+    'Focus on the intent and non-obvious reasoning. Avoid restating the code.',
+    'Strict output: return one JSON object: { "variants": ["...","...","..."] } with exactly 3 items.',
+    '',
+    'Code context (the target line is marked with >>>):',
+    codeSnippet
+  ].join('\n');
+  const messages: ChatMessage[] = [ { role: 'system', content: system }, { role: 'user', content: user } ];
+  try {
+    const completion = opts.provider === 'claude'
+      ? await callClaudeWithMessages(messages, opts.apiKey, opts.model)
+      : await callOpenAIWithMessages(messages, opts.apiKey, opts.model);
+    const parsed = tryParseJSON(completion);
+    if (parsed && Array.isArray(parsed.variants)) {
+      return parsed.variants.map((s: any) => String(s)).filter((s: string) => s.trim().length > 0).slice(0, 3);
+    }
+    // fallback: try to extract array
+    const arr = tryParseJSONArray(completion);
+    if (Array.isArray(arr)) return arr.map((s: any) => String(s)).slice(0, 3);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    void vscode.window.showWarningMessage(`WhyComment LLM (variants) failed: ${msg}`);
+  }
+  return [];
+}
+
 function buildSystemPrompt(lang: 'en' | 'ja'): string {
   const langInstr = lang === 'ja' ? 'Language: Japanese.' : 'Language: English.';
   return [
@@ -72,7 +110,6 @@ function buildSystemPrompt(lang: 'en' | 'ja'): string {
     'Skip if same line or <= 3 lines above already has a comment.',
     'Focus: comment where a reader would pause and need rationale - non-obvious ordering/early-continue/special-cases, unexplained constants/thresholds, math/tax/discount order, truncation/limits, init/sleep/heartbeat, complex conditions/regex/bitwise. Treat these as cues, not a checklist.',
     'Style for message: start with "Why" (en) or "\u306a\u305c" (ja), end with "?", keep <= 80 chars, and make it specific to the line and its surrounding context.',
-    'Style for suggestedComment: a concise explanatory comment to insert above the line (one sentence). No code fences, no markdown, no leading comment token.',
     langInstr
   ].join('\n');
 }
@@ -83,7 +120,7 @@ function buildUserPrompt(annotatedDiff: string, lang: 'en' | 'ja'): string {
     '- Each added line is prefixed with its absolute NEW FILE line number in square brackets, e.g. "[42] +const x = 1".',
     'Task: Identify added lines that feel contextually surprising and would prompt a "why" explanation. Only consider added lines (+).',
     (lang === 'ja' ? 'Output language: Japanese.' : 'Output language: English.'),
-    'Strict format: Return exactly one JSON object { "items": [ { "line": <0-based absolute new-file line>, "message": <Why-question>, "suggestedComment": <best explanatory comment to insert>, "anchor": <exact code text> } ] }. No extra keys/markdown/code fences. If none, return { "items": [] }.',
+    'Strict format: Return exactly one JSON object { "items": [ { "line": <0-based absolute new-file line>, "message": <Why-question>, "anchor": <exact code text> } ] }. No extra keys/markdown/code fences. If none, return { "items": [] }.',
     '',
     '- Derive "line" from the bracketed line numbers (absolute NEW FILE lines). Convert to 0-based. Only output JSON.',
     '',
@@ -165,7 +202,7 @@ function parseLLMResponse(uri: vscode.Uri, completion: string, lang: 'en' | 'ja'
     const matches = completion.match(re) || [];
     for (const m of matches) {
       const o = tryParseJSON(m);
-      if (o && typeof o === 'object' && ('line' in o || 'suggestedComment' in o)) {
+      if (o && typeof o === 'object' && ('line' in o)) {
         objs.push(o);
       }
     }
@@ -176,14 +213,12 @@ function parseLLMResponse(uri: vscode.Uri, completion: string, lang: 'en' | 'ja'
   for (const it of arr) {
     const line = typeof it.line === 'number' ? it.line : 0;
     const message = String(it.message ?? (lang === 'ja' ? '\\u306a\\u305c\\uff1f' : 'Why?'));
-    const suggestedComment = String(it.suggestedComment ?? (lang === 'ja' ? '\u3053\u306e\u610f\u56f3\u30fb\u524d\u63d0\u30fb\u5236\u7d04\u3092\u7c21\u6d01\u306b\u8aac\u660e\u3057\u3066\u304f\u3060\u3055\u3044\u3002' : 'Explain the intent and constraints.'));
     const anchor = typeof it.anchor === 'string' ? it.anchor : undefined;
     out.push({
-      id: sha1(`${uri.toString()}:${line}:${message}:${suggestedComment}:llm`),
+      id: sha1(`${uri.toString()}:${line}:${message}:llm`),
       uri,
       line,
       message,
-      suggestedComment,
       anchor,
       source: 'llm',
       createdAt: Date.now()
@@ -204,4 +239,17 @@ function tryParseJSON(text: string): any | undefined {
     }
     return undefined;
   }
+}
+
+function tryParseJSONArray(text: string): any[] | undefined {
+  try {
+    const o = JSON.parse(text);
+    if (Array.isArray(o)) return o;
+  } catch {}
+  const start = text.indexOf('[');
+  const end = text.lastIndexOf(']');
+  if (start >= 0 && end > start) {
+    try { const a = JSON.parse(text.slice(start, end + 1)); if (Array.isArray(a)) return a; } catch {}
+  }
+  return undefined;
 }

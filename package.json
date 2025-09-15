@@ -17,17 +17,21 @@
     "onView:whycommentView"
   ],
   "main": "./out/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "whycomment.analyzeSelection",
-        "title": "WhyComment: Analyze Selection"
-      },
-      {
-        "command": "whycomment.applySuggestion",
-        "title": "WhyComment: Apply Suggestion"
-      },
-      {
+    "contributes": {
+      "commands": [
+        {
+          "command": "whycomment.analyzeSelection",
+          "title": "WhyComment: Analyze Selection"
+        },
+        {
+          "command": "whycomment.suggestComments",
+          "title": "WhyComment: Suggest Comment Variants"
+        },
+        {
+          "command": "whycomment.applySuggestion",
+          "title": "WhyComment: Apply Suggestion"
+        },
+        {
         "command": "whycomment.ignoreSuggestion",
         "title": "WhyComment: Ignore Suggestion"
       },
@@ -52,44 +56,53 @@
         }
       ]
     },
-    "menus": {
-      "view/title": [
-        {
-          "command": "whycomment.clearAll",
-          "when": "view == whycommentView",
-          "group": "navigation@99"
-        }
-      ],
-      "commandPalette": [
-        {
-          "command": "whycomment.applySuggestion",
-          "when": "false"
-        },
-        {
-          "command": "whycomment.ignoreSuggestion",
-          "when": "false"
-        }
-      ],
-      "editor/context": [
-        {
-          "command": "whycomment.analyzeSelection",
-          "when": "editorHasSelection",
-          "group": "navigation@1"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "whycomment.applySuggestion",
-          "when": "view == whycommentView && viewItem == suggestion",
-          "group": "navigation@1"
-        },
-        {
-          "command": "whycomment.ignoreSuggestion",
-          "when": "view == whycommentView && viewItem == suggestion",
-          "group": "navigation@2"
-        }
-      ]
-    },
+      "menus": {
+        "view/title": [
+          {
+            "command": "whycomment.clearAll",
+            "when": "view == whycommentView",
+            "group": "navigation@99"
+          }
+        ],
+        "commandPalette": [
+          {
+            "command": "whycomment.applySuggestion",
+            "when": "false"
+          },
+          {
+            "command": "whycomment.ignoreSuggestion",
+            "when": "false"
+          },
+          {
+            "command": "whycomment.suggestComments",
+            "when": "true"
+          }
+        ],
+        "editor/context": [
+          {
+            "command": "whycomment.analyzeSelection",
+            "when": "editorHasSelection",
+            "group": "navigation@1"
+          }
+        ],
+        "view/item/context": [
+          {
+            "command": "whycomment.applySuggestion",
+            "when": "view == whycommentView && viewItem == suggestion",
+            "group": "navigation@1"
+          },
+          {
+            "command": "whycomment.ignoreSuggestion",
+            "when": "view == whycommentView && viewItem == suggestion",
+            "group": "navigation@2"
+          },
+          {
+            "command": "whycomment.suggestComments",
+            "when": "view == whycommentView && viewItem == suggestion",
+            "group": "navigation@3"
+          }
+        ]
+      },
     "configuration": {
       "title": "WhyComment",
       "properties": {

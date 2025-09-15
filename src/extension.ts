@@ -16,6 +16,14 @@ const cache = new Map<string, Suggestion[]>(); // diff-hash -> suggestions
 // Keep last analyzed file text to send incremental diffs only
 const previousTextByFile = new Map<string, string>();
 
+function progressLocation(manual?: boolean): vscode.ProgressLocation {
+  return manual ? vscode.ProgressLocation.Notification : vscode.ProgressLocation.Window;
+}
+
+async function withLLMProgress<T>(title: string, manual: boolean | undefined, fn: () => Promise<T>): Promise<T> {
+  return vscode.window.withProgress({ location: progressLocation(manual), title }, async () => await fn());
+}
+
 export function activate(context: vscode.ExtensionContext) {
   store = new SuggestionStore();
   tree = new SuggestionTreeProvider(() => collectAllSuggestions());
@@ -31,6 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('whycomment.clearAll', clearAllSuggestions),
     vscode.commands.registerCommand('whycomment.applySuggestion', applySuggestion),
     vscode.commands.registerCommand('whycomment.ignoreSuggestion', ignoreSuggestion),
+    vscode.commands.registerCommand('whycomment.suggestComments', suggestComments),
     vscode.commands.registerCommand('whycomment.toggleAutoAnalyze', toggleAutoAnalyze),
     vscode.commands.registerCommand('whycomment.chooseLanguage', chooseLanguage)
   );
@@ -61,7 +70,7 @@ async function analyzeSelection() {
   const doc = editor.document;
   const selection = editor.selection;
   if (!selection || selection.isEmpty) {
-    void vscode.window.showInformationMessage('WhyComment: 選択範囲がありません。');
+    void vscode.window.showInformationMessage('WhyComment: No selection.');
     return;
   }
   const cfg = getConfig();
@@ -85,16 +94,18 @@ async function analyzeSelection() {
     if (llmKey) {
       const quotaOk = await withinDailyLimit(0);
       if (!quotaOk) {
-        void vscode.window.showInformationMessage('WhyComment: 1日の上限に達しました。');
+        void vscode.window.showInformationMessage('WhyComment: Daily limit reached.');
         return;
       }
       const model = cfg.apiProvider === 'openai' ? cfg.openaiModel : cfg.claudeModel;
-      suggestions = await analyzeWithLLM(doc.uri, diff, { apiKey: llmKey, provider: cfg.apiProvider, language: cfg.outputLanguage, model });
+      suggestions = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'WhyComment: Analyzing selection…' }, async () => {
+        return analyzeWithLLM(doc.uri, diff, { apiKey: llmKey, provider: cfg.apiProvider, language: cfg.outputLanguage, model });
+      });
       // Re-anchor suggestions to the current document content to avoid line drift
       suggestions = await resolveSuggestionLocations(doc.uri, suggestions);
       await incrementDailyCount();
     } else {
-      void vscode.window.showInformationMessage('WhyComment: LLMのAPIキーが設定されていません。');
+      void vscode.window.showInformationMessage('WhyComment: LLM API key is not set.');
       return;
     }
 
@@ -162,7 +173,9 @@ async function analyzeUri(uri: vscode.Uri, opts?: { manual?: boolean }) {
         if (quotaOk) {
           const model = cfg.apiProvider === 'openai' ? cfg.openaiModel : cfg.claudeModel;
           // Call LLM without skipLines; UI handles dedupe
-          const llmItems = await analyzeWithLLM(uri, diff, { apiKey: llmKey, provider: cfg.apiProvider, language: cfg.outputLanguage, model });
+          const llmItems = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'WhyComment: Generating suggestions…' }, async () => {
+            return analyzeWithLLM(uri, diff, { apiKey: llmKey, provider: cfg.apiProvider, language: cfg.outputLanguage, model });
+          });
           suggestions = llmItems;
           await incrementDailyCount();
         } else {
@@ -225,19 +238,55 @@ async function applySuggestion(item?: any) {
     s = suggestions.find(x => x.line === editor.selection.active.line) ?? suggestions[0];
   }
   if (!s) return;
-  // Insert the suggested comment from LLM; if empty, prompt the user
-  let text = (s.suggestedComment || '').trim();
-  if (!text) {
-    const langIsJa = (vscode.env.language || '').toLowerCase().startsWith('ja');
-    const input = await vscode.window.showInputBox({
-      prompt: langIsJa ? '挿入するコメントを入力してください' : 'Enter the comment to insert',
-      value: s.message || ''
-    });
-    if (!input) return;
-    text = input.trim();
-  }
-  await insertCommentAbove({ ...s, suggestedComment: text });
+  const text = await chooseBestComment(s);
+  if (!text) return;
+  await insertCommentAbove(s, text);
   s.applied = true; store.update(s); tree.refresh();
+}
+
+async function suggestComments(item?: any) {
+  const sFromItem: Suggestion | undefined = item?.suggestion as Suggestion | undefined;
+  let s = sFromItem;
+  if (!s) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) { return; }
+    const uri = editor.document.uri;
+    const line0 = editor.selection.active.line;
+    const items = store.getForFile(uri).filter(x => !x.applied && !x.ignored);
+    s = items.find(x => x.line === line0);
+    if (!s) { void vscode.window.showInformationMessage('WhyComment: No suggestion found for current line'); return; }
+  }
+
+  const cfg = getConfig();
+  const apiKey = cfg.apiKey?.trim();
+  if (!apiKey) { void vscode.window.showInformationMessage('WhyComment: LLM API key is not set'); return; }
+  try {
+    const doc = await vscode.workspace.openTextDocument(s.uri);
+    const target = Math.min(Math.max(0, s.line), doc.lineCount - 1);
+    const start = Math.max(0, target - 3);
+    const end = Math.min(doc.lineCount - 1, target + 3);
+    const snippetLines: string[] = [];
+    for (let i = start; i <= end; i++) {
+      const prefix = i === target ? '>>>' : '   ';
+      snippetLines.push(`${prefix} ${doc.lineAt(i).text}`);
+    }
+    const snippet = snippetLines.join('\n');
+
+    const model = cfg.apiProvider === 'openai' ? cfg.openaiModel : cfg.claudeModel;
+    const { suggestCommentVariantsForLine } = await import('./llm');
+    const variants = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'WhyComment: Proposing comment variants…' }, async () => {
+      return suggestCommentVariantsForLine(snippet, { apiKey, provider: cfg.apiProvider, language: cfg.outputLanguage, model });
+    });
+    if (!variants.length) { void vscode.window.showInformationMessage('WhyComment: Could not generate comment variants'); return; }
+
+    const picked = await vscode.window.showQuickPick(variants.map(v => ({ label: v })), { placeHolder: 'Select a comment to insert' });
+    if (!picked) return;
+    await insertCommentAbove(s, picked.label);
+    s.applied = true; store.update(s); tree.refresh();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    void vscode.window.showWarningMessage(`WhyComment: Failed to generate comment variants: ${msg}`);
+  }
 }
 
 async function ignoreSuggestion(item?: any) {
@@ -256,11 +305,11 @@ async function ignoreSuggestion(item?: any) {
   s.ignored = true; store.update(s); tree.refresh();
 }
 
-async function insertCommentAbove(s: Suggestion) {
+async function insertCommentAbove(s: Suggestion, commentText: string) {
   const doc = await vscode.workspace.openTextDocument(s.uri);
   const editor = await vscode.window.showTextDocument(doc);
   const token = getLineCommentToken(doc.languageId);
-  const raw = s.suggestedComment.trim();
+  const raw = commentText.trim();
   const commentLine = raw.startsWith(token) ? raw : `${token} ${raw}`;
   const targetLine = Math.min(Math.max(0, s.line), doc.lineCount - 1);
   const targetText = doc.lineAt(targetLine).text;
@@ -284,7 +333,7 @@ async function chooseLanguage() {
   const picked = await vscode.window.showQuickPick([
     { label: 'Auto', value: 'auto' },
     { label: 'English', value: 'en' },
-    { label: '日本語', value: 'ja' }
+    { label: 'Japanese', value: 'ja' }
   ], { placeHolder: 'Select output language for suggested comments' });
   if (!picked) return;
   await vscode.workspace.getConfiguration('whycomment').update('outputLanguage', picked.value, vscode.ConfigurationTarget.Workspace);
@@ -375,26 +424,14 @@ function addedLinesFromUnifiedDiff(diff: string): Set<number> {
 }
 
 async function chooseBestComment(s: Suggestion): Promise<string | undefined> {
-  const raw = (s.suggestedComment || '').trim();
   const msg = (s.message || '').trim();
   const langIsJa = (vscode.env.language || '').toLowerCase().startsWith('ja');
-  const genericEn = 'Explain the intent and constraints.';
-  const genericJa = 'この意図・前提・制約を簡潔に説明してください。';
-  const genericMsgJa = '理由を説明してください';
-  const isGeneric = (txt: string) => !txt || txt === genericEn || txt === genericJa || txt === genericMsgJa;
-
-  // Auto-pick if suggested is specific
-  if (!isGeneric(raw)) return raw;
-
-  // Build a reasonable default skeleton
-  const skeleton = langIsJa ? 'なぜこの変更？' : 'Why this change?';
-  const prefill = !isGeneric(msg) ? msg : skeleton;
-
-  // Ask user to confirm/edit when info is insufficient
+  const fallback = 'Explain the intent and constraints.';
+  const prefill = msg || fallback;
   const input = await vscode.window.showInputBox({
-    prompt: langIsJa ? '挿入するコメントを確認・編集してください' : 'Confirm or edit the comment to insert',
+    prompt: 'Confirm or edit the comment to insert',
     value: prefill,
-    validateInput: (v) => v.trim().length === 0 ? (langIsJa ? '空のコメントは挿入できません' : 'Comment cannot be empty') : undefined
+    validateInput: (v) => v.trim().length === 0 ? 'Comment cannot be empty' : undefined
   });
   return input?.trim();
 }
