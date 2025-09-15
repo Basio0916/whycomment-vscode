@@ -121,7 +121,8 @@ async function analyzeUri(uri: vscode.Uri, opts?: { manual?: boolean }) {
   try {
     const cfg = getConfig();
     const relPath = vscode.workspace.asRelativePath(uri);
-    if (anyGlobMatch(cfg.excludePatterns, relPath)) {
+    // Skip excluded files only for auto-triggered analysis; allow manual runs
+    if (!opts?.manual && anyGlobMatch(cfg.excludePatterns, relPath)) {
       showInfo(`Excluded: ${relPath}`);
       return;
     }
