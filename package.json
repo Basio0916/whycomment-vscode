@@ -12,7 +12,6 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:whycomment.analyzeCurrentFile",
     "onCommand:whycomment.analyzeSelection",
     "onCommand:whycomment.clearAll",
     "onView:whycommentView"
@@ -20,10 +19,6 @@
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "whycomment.analyzeCurrentFile",
-        "title": "WhyComment: Analyze Current File"
-      },
       {
         "command": "whycomment.analyzeSelection",
         "title": "WhyComment: Analyze Selection"
@@ -47,10 +42,6 @@
       {
         "command": "whycomment.clearAll",
         "title": "WhyComment: Clear All Suggestions"
-      },
-      {
-        "command": "whycomment.chooseOpenAIModel",
-        "title": "WhyComment: Choose OpenAI Model"
       }
     ],
     "views": {
@@ -67,6 +58,16 @@
           "command": "whycomment.clearAll",
           "when": "view == whycommentView",
           "group": "navigation@99"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "whycomment.applySuggestion",
+          "when": "false"
+        },
+        {
+          "command": "whycomment.ignoreSuggestion",
+          "when": "false"
         }
       ],
       "editor/context": [

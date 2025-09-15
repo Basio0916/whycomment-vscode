@@ -28,15 +28,13 @@ export function activate(context: vscode.ExtensionContext) {
     onConfigChange(() => showInfo('Configuration updated')),
     vscode.workspace.onDidChangeTextDocument(onDocChanged),
     vscode.workspace.onDidSaveTextDocument(doc => scheduleAnalyze(doc.uri)),
-    vscode.commands.registerCommand('whycomment.analyzeCurrentFile', analyzeCurrentFile),
     vscode.commands.registerCommand('whycomment.analyzeSelection', analyzeSelection),
     // Register clear-all to fix view title button error
     vscode.commands.registerCommand('whycomment.clearAll', clearAllSuggestions),
     vscode.commands.registerCommand('whycomment.applySuggestion', applySuggestion),
     vscode.commands.registerCommand('whycomment.ignoreSuggestion', ignoreSuggestion),
     vscode.commands.registerCommand('whycomment.toggleAutoAnalyze', toggleAutoAnalyze),
-    vscode.commands.registerCommand('whycomment.chooseLanguage', chooseLanguage),
-    vscode.commands.registerCommand('whycomment.chooseOpenAIModel', chooseOpenAIModel)
+    vscode.commands.registerCommand('whycomment.chooseLanguage', chooseLanguage)
   );
 }
 
@@ -57,11 +55,7 @@ function scheduleAnalyze(uri: vscode.Uri) {
   debounceTimers.set(key, timer);
 }
 
-async function analyzeCurrentFile() {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) return;
-  await analyzeUri(editor.document.uri, { manual: true });
-}
+// analyzeCurrentFile command removed per request
 
 async function analyzeSelection() {
   const editor = vscode.window.activeTextEditor;
@@ -313,25 +307,7 @@ async function clearAllSuggestions() {
   showInfo('All suggestions cleared');
 }
 
-async function chooseOpenAIModel() {
-  const cfg = getConfig();
-  const presets = [
-    { label: 'gpt-4o-mini', description: 'Fast, cost-efficient', value: 'gpt-4o-mini' },
-    { label: 'gpt-4o', description: 'Balanced quality', value: 'gpt-4o' },
-    { label: 'gpt-4-turbo', description: 'Legacy turbo', value: 'gpt-4-turbo' },
-    { label: 'Custom...', description: 'Enter model id', value: '__custom__' }
-  ];
-  const picked = await vscode.window.showQuickPick(presets, { placeHolder: `OpenAI model (current: ${cfg.openaiModel})` });
-  if (!picked) return;
-  let model = picked.value;
-  if (model === '__custom__') {
-    const input = await vscode.window.showInputBox({ prompt: 'Enter OpenAI model id', value: cfg.openaiModel });
-    if (!input) return;
-    model = input.trim();
-  }
-  await vscode.workspace.getConfiguration('whycomment').update('openaiModel', model, vscode.ConfigurationTarget.Workspace);
-  showInfo(`OpenAI model set to ${model}`);
-}
+// chooseOpenAIModel command removed per request
 
 async function withinDailyLimit(limit: number): Promise<boolean> {
   const today = new Date().toISOString().slice(0, 10);
