@@ -109,6 +109,7 @@ function buildSystemPrompt(lang: 'en' | 'ja'): string {
     'No style/refactor advice. Keep questions short and context-first.',
     'Skip if same line or <= 3 lines above already has a comment.',
     'Focus: comment where a reader would pause and need rationale - non-obvious ordering/early-continue/special-cases, unexplained constants/thresholds, math/tax/discount order, truncation/limits, init/sleep/heartbeat, complex conditions/regex/bitwise. Treat these as cues, not a checklist.',
+    'Granularity: Make fine-grained, line-level calls. Do not summarize across multiple changes. Even for large diffs, include every added line that warrants a why-question as its own item.',
     'Style for message: start with "Why" (en) or "\u306a\u305c" (ja), end with "?", keep <= 80 chars, and make it specific to the line and its surrounding context.',
     langInstr
   ].join('\n');
@@ -119,6 +120,7 @@ function buildUserPrompt(annotatedDiff: string, lang: 'en' | 'ja'): string {
     'Given an annotated unified git diff for a single file:',
     '- Each added line is prefixed with its absolute NEW FILE line number in square brackets, e.g. "[42] +const x = 1".',
     'Task: Identify added lines that feel contextually surprising and would prompt a "why" explanation. Only consider added lines (+).',
+    'Do not collapse or summarize. Output separate items for each applicable line, even if many lines qualify.',
     (lang === 'ja' ? 'Output language: Japanese.' : 'Output language: English.'),
     'Strict format: Return exactly one JSON object { "items": [ { "line": <0-based absolute new-file line>, "message": <Why-question>, "anchor": <exact code text> } ] }. No extra keys/markdown/code fences. If none, return { "items": [] }.',
     '',
@@ -156,7 +158,7 @@ async function callOpenAIWithMessages(messages: ChatMessage[], apiKey: string, m
     model: model || 'gpt-4o-mini',
     messages,
     temperature: 0.2,
-    max_tokens: 1500,
+    max_tokens: 3000,
     response_format: { type: 'json_object' }
   } as any;
   const resp = await fetchFn('https://api.openai.com/v1/chat/completions', {
@@ -176,7 +178,7 @@ async function callClaudeWithMessages(messages: ChatMessage[], apiKey: string, m
   const msgList = messages.filter(m => m.role !== 'system');
   const body = {
     model: model || 'claude-3-5-haiku-latest',
-    max_tokens: 1500,
+    max_tokens: 3000,
     temperature: 0.2,
     system: systemMsg,
     messages: msgList
