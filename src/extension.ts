@@ -29,6 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeTextDocument(onDocChanged),
     vscode.workspace.onDidSaveTextDocument(doc => scheduleAnalyze(doc.uri)),
     vscode.commands.registerCommand('whycomment.analyzeCurrentFile', analyzeCurrentFile),
+    vscode.commands.registerCommand('whycomment.analyzeSelection', analyzeSelection),
     vscode.commands.registerCommand('whycomment.applySuggestion', applySuggestion),
     vscode.commands.registerCommand('whycomment.ignoreSuggestion', ignoreSuggestion),
     vscode.commands.registerCommand('whycomment.toggleAutoAnalyze', toggleAutoAnalyze),
@@ -58,6 +59,69 @@ async function analyzeCurrentFile() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
   await analyzeUri(editor.document.uri, { manual: true });
+}
+
+async function analyzeSelection() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document;
+  const selection = editor.selection;
+  if (!selection || selection.isEmpty) {
+    void vscode.window.showInformationMessage('WhyComment: 選択範囲がありません。');
+    return;
+  }
+  const cfg = getConfig();
+  if (!cfg.enabled) return;
+  const startLine = selection.start.line;
+  const endLine = selection.end.line;
+  const endChar = selection.end.character;
+  // Determine inclusive last line of content
+  const lastLine = endChar === 0 && endLine > startLine ? endLine - 1 : endLine;
+  const len = lastLine - startLine + 1;
+  // Build a minimal unified diff containing only added lines for the selection
+  const lines: string[] = [];
+  lines.push(`@@ -${startLine + 1},${len} +${startLine + 1},${len} @@`);
+  for (let i = startLine; i <= lastLine; i++) {
+    lines.push('+' + doc.lineAt(i).text);
+  }
+  const diff = lines.join('\n');
+
+  try {
+    const llmKey = cfg.apiKey?.trim();
+    let suggestions: Suggestion[] = [];
+    if (llmKey) {
+      const quotaOk = await withinDailyLimit(cfg.dailyLimit);
+      if (!quotaOk) {
+        void vscode.window.showInformationMessage('WhyComment: 1日の上限に達しました。');
+        return;
+      }
+      const model = cfg.apiProvider === 'openai' ? cfg.openaiModel : cfg.claudeModel;
+      suggestions = await analyzeWithLLM(doc.uri, diff, { apiKey: llmKey, provider: cfg.apiProvider, language: cfg.outputLanguage, model });
+      // Re-anchor suggestions to the current document content to avoid line drift
+      suggestions = await resolveSuggestionLocations(doc.uri, suggestions);
+      await incrementDailyCount();
+    } else {
+      void vscode.window.showInformationMessage('WhyComment: LLMのAPIキーが設定されていません。');
+      return;
+    }
+
+    // Keep only suggestions that fall within the selected range
+    const filtered = suggestions.filter(s => s.line >= startLine && s.line <= lastLine);
+    if (!filtered.length) {
+      showInfo('No suggestions for selection');
+      return;
+    }
+    const existing = store.getForFile(doc.uri);
+    const merged = appendAndDedupe(existing, filtered);
+    store.setForFile(doc.uri, merged);
+    tree.refresh();
+    // Optionally reveal first suggestion
+    const first = filtered[0];
+    revealPosition(first.uri, new vscode.Position(first.line, 0));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    void vscode.window.showWarningMessage(`WhyComment selection analysis failed: ${msg}`);
+  }
 }
 
 async function analyzeUri(uri: vscode.Uri, opts?: { manual?: boolean }) {

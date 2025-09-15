@@ -13,6 +13,7 @@
   "activationEvents": [
     "onStartupFinished",
     "onCommand:whycomment.analyzeCurrentFile",
+    "onCommand:whycomment.analyzeSelection",
     "onCommand:whycomment.clearAll",
     "onView:whycommentView"
   ],
@@ -22,6 +23,10 @@
       {
         "command": "whycomment.analyzeCurrentFile",
         "title": "WhyComment: Analyze Current File"
+      },
+      {
+        "command": "whycomment.analyzeSelection",
+        "title": "WhyComment: Analyze Selection"
       },
       {
         "command": "whycomment.applySuggestion",
@@ -62,6 +67,13 @@
           "command": "whycomment.clearAll",
           "when": "view == whycommentView",
           "group": "navigation@99"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "whycomment.analyzeSelection",
+          "when": "editorHasSelection",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
