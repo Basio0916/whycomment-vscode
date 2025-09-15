@@ -30,6 +30,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidSaveTextDocument(doc => scheduleAnalyze(doc.uri)),
     vscode.commands.registerCommand('whycomment.analyzeCurrentFile', analyzeCurrentFile),
     vscode.commands.registerCommand('whycomment.analyzeSelection', analyzeSelection),
+    // Register clear-all to fix view title button error
+    vscode.commands.registerCommand('whycomment.clearAll', clearAllSuggestions),
     vscode.commands.registerCommand('whycomment.applySuggestion', applySuggestion),
     vscode.commands.registerCommand('whycomment.ignoreSuggestion', ignoreSuggestion),
     vscode.commands.registerCommand('whycomment.toggleAutoAnalyze', toggleAutoAnalyze),
