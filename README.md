@@ -1,55 +1,56 @@
 # WhyComment
 
-Detect "why?" moments in code changes and suggest comments.
+AI-assisted “why?” comments for your code changes. WhyComment scans diffs and highlights lines that deserve a short rationale, then helps you insert concise comments where they matter most.
 
 ## Features
 
-- Watches file saves (debounced) and computes Git diff vs HEAD.
-- Analyzes changed lines using an LLM.
-- Shows suggestions in a side panel with Apply/Ignore.
-- Inserts a line comment above the target line, preserving indentation.
+- Auto-analyzes saved files (debounced) using a compact Git diff.
+- “Analyze Selection” to focus on a specific range.
+- Side panel to review suggestions and jump to lines.
+- One-click “Apply” to insert a comment above the line, preserving indentation.
+- “Suggest Comment Variants” to pick from 3 AI-generated one-liners.
+- Stable line mapping and duplicate suppression for reliable results.
+
+## Quick Start
+
+1) Install the extension from the Marketplace.
+2) Set an LLM API key in Settings (WhyComment: Api Key). Supports Claude (default) and OpenAI.
+3) Save a file or right-click and run “WhyComment: Analyze Selection”.
+4) Open the WhyComment view in the Explorer, review items, and Apply or Ignore.
 
 ## Commands
 
-- `WhyComment: Analyze Selection`  Run analysis for the selected range.
-- `WhyComment: Toggle Auto Analyze`  Enable/disable auto analyze on save.
-- `WhyComment: Clear All Suggestions`  Clear all current suggestions.
+- `WhyComment: Analyze Selection` – Analyze the current selection.
+- `WhyComment: Suggest Comment Variants` – Generate 3 comment candidates for a line.
+- `WhyComment: Toggle Auto Analyze` – Enable/disable auto analysis on save.
+- `WhyComment: Clear All Suggestions` – Clear all current suggestions.
 
-## Settings
+## Behavior
 
-```
-{
-  "whycomment.apiKey": "",
-  "whycomment.apiProvider": "claude",
-  "whycomment.claudeModel": "claude-3-5-haiku-latest",
-  "whycomment.openaiModel": "gpt-4o-mini",
-  "whycomment.contextLines": 10,
-  "whycomment.excludePatterns": ["**/*.test.*", "**/*.spec.*"],
-  "whycomment.autoAnalyze": true,
-  "whycomment.debounceMs": 1000,
-  "whycomment.outputLanguage": "auto"
-}
-```
+- Debounced auto-analysis (default 1s) on save for workspace files only.
+- VS Code configs (e.g., `.code-workspace`, `.vscode/*`) are ignored by default.
+- Respects exclude patterns for auto-analysis; manual “Analyze Selection” still runs.
+- Inserted comments align to the target line’s indentation.
+- Existing UI items prevent duplicate suggestions for the same line.
 
-## How it works
+## Providers & Models
 
-1. On save, the extension debounces and then runs `git diff` for the saved file.
-2. The diff is analyzed by the configured LLM with a compact prompt.
-3. Suggestions appear in the WhyComment view. Apply inserts a comment above the line.
+- Works with Claude (default) and OpenAI. Choose provider/model in Settings.
+- The extension sends a compact, annotated diff to the provider to minimize payload.
+
+## Privacy & Data
+
+- No code is sent unless you configure an API key.
+- Only compact diffs (and locale) are sent to generate suggestions.
+- No data is stored by the extension beyond VS Code state for UX.
 
 ## Requirements
 
-- Git-initialized workspace, Node.js 18+, VS Code 1.80+
-- OpenAI or Claude API key for LLM.
+- VS Code 1.80+ and a Git-initialized workspace.
+- An API key for your chosen LLM provider.
 
-## Known limits
+## Troubleshooting
 
-- Language comment token detection is best-effort; common languages supported.
-
-## Development
-
-```
-npm install
-npm run watch
-# Press F5 in VS Code to launch Extension Host
-```
+- “No suggestions”: ensure the file has changes vs HEAD, or try Analyze Selection.
+- “Not analyzing this file”: check exclude patterns and that it’s inside the workspace.
+- Progress indicator shows during LLM calls. Errors surface as VS Code notifications.
